@@ -54,6 +54,7 @@ async function measureDownloadSpeed() {
   console.log('🐞 ~ file: index.js:13 ~ downloadFile ~ fileSize:', fileSize)
   let downloadedSize = 0;
   let numberOfDownloadedChunks = 0;
+  // TODO: To create a unique file when making multiple calls to avoid concurrency issues.
   const writeStream = createWriteStream(outputFilePath);
 
   try {
@@ -75,13 +76,10 @@ async function measureDownloadSpeed() {
         responseType: 'stream',
       });
       data.pipe(writeStream, { end: false });
-
-
       await new Promise((resolve) => {
         // console.log('🐞 ~ file: index.js:36 ~ downloadFile ~ downloadedSize:', downloadedSize)
         data.on('end', resolve);
       });
-
       downloadedSize += CHUNK_SIZE_BYTES;
       numberOfDownloadedChunks++;
     }
@@ -90,6 +88,8 @@ async function measureDownloadSpeed() {
   }
 
   writeStream.end();
+  // purge output file as its temporary. 
+  // TODO: To create a unique file when making multiple calls to avoid concurrency issues.
   fstat.unlinkSync(outputFilePath);
   return { chunksCount: numberOfDownloadedChunks, chunkSizeInBytes: CHUNK_SIZE_BYTES, timeInMS: ONE_SECOND };
 }
@@ -122,6 +122,10 @@ try {
   const avgDownloadSpeedMbps = (calculationONE.speedMbps + calculationTWO.speedMbps + calculationTHREE.speedMbps) / 3;
 
   console.log('Average Download Speed: ', avgDownloadSpeedKbps, 'Kbps', avgDownloadSpeedMbps, 'Mbps');
+
+  console.log();
+  console.log("Includes latency in the network.");
+
 } catch (e) {
   console.error('error', e)
 }
