@@ -76,6 +76,7 @@ function calculateDownloadSpeed(data) {
 
   console.log('Download Speed               :', downloadSpeedInKbps, 'Kbps');
   console.log('Download Speed               :', downloadSpeedInMbps, 'Mbps');
+  console.log('-'.repeat(100));
 
   return { speedKbps: downloadSpeedInKbps, speedMbps: downloadSpeedInMbps };
 }
@@ -92,8 +93,8 @@ try {
   const avgDownloadSpeedKbps = (calculationONE.speedKbps + calculationTWO.speedKbps + calculationTHREE.speedKbps) / 3;
   const avgDownloadSpeedMbps = (calculationONE.speedMbps + calculationTWO.speedMbps + calculationTHREE.speedMbps) / 3;
 
-  console.log('Average Download Speed       : ', avgDownloadSpeedKbps, 'Kbps');
-  console.log('Average Download Speed       : ', avgDownloadSpeedMbps, 'Mbps');
+  console.log('Average Download Speed       : ', avgDownloadSpeedKbps.toFixed(2), 'Kbps');
+  console.log('Average Download Speed       : ', avgDownloadSpeedMbps.toFixed(2), 'Mbps');
   console.log();
   console.log("Note: Includes latency in the network.");
 } catch (e) {
