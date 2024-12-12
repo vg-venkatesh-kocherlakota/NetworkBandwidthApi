@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using System.Net;
 
 [ApiController]
 [Route("network")]
@@ -59,6 +61,22 @@ public class NetworkBandwidthController : ControllerBase
 #if DEBUG
         await Task.Delay(_delayInMilliseconds);
 #endif
+
+        return new EmptyResult();
+    }
+
+    [HttpPost("upload")]
+    public async Task<IActionResult> ReceiveUploadedChunk([FromForm] IFormFile fileChunk)
+    {
+        if (fileChunk == null || fileChunk?.Length == 0)
+        {
+            return new EmptyResult();
+        }
+        using (var memoryStream = new MemoryStream())
+        {
+            fileChunk.CopyTo(memoryStream);
+        }
+        Response.StatusCode = (int)HttpStatusCode.OK;
 
         return new EmptyResult();
     }
