@@ -32,7 +32,7 @@ public class NetworkBandwidthController : ControllerBase
     [HttpGet("download")]
     public async Task<IActionResult> DownloadChunkedFileAsync()
     {
-        var downloadFileStream = new FileStream(_filePathForDownloadSpeed, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var downloadFileStream = new FileStream(_filePathForDownloadSpeed, FileMode.Open, FileAccess.Read, FileShare.Read);
 
         Response.Headers.Append("Accept-Ranges", "bytes");
         var rangeHeader = Request.Headers["Range"].ToString();
