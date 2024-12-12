@@ -90,7 +90,8 @@ async function measureDownloadSpeed() {
   }
 
   writeStream.end();
-  calculateDownloadSpeed({ chunksCount: numberOfDownloadedChunks, chunkSizeInBytes: CHUNK_SIZE_BYTES, timeInMS: ONE_SECOND });
+  fstat.unlinkSync(outputFilePath);
+  return { chunksCount: numberOfDownloadedChunks, chunkSizeInBytes: CHUNK_SIZE_BYTES, timeInMS: ONE_SECOND };
 }
 
 function calculateDownloadSpeed(data) {
@@ -100,13 +101,27 @@ function calculateDownloadSpeed(data) {
   const timeInSeconds = (data.timeInMS / 1000);
   const dataSizeInKbps = (data.chunksCount * data.chunkSizeInBytes * 8) / 1024;
   const downloadSpeedInKbps = dataSizeInKbps / timeInSeconds;
+  const downloadSpeedInMbps = downloadSpeedInKbps / 1024;
   console.log('Download Speed             :', downloadSpeedInKbps, 'Kbps');
-  console.log('Download Speed             :', downloadSpeedInKbps / 1024, 'Mbps');
+  console.log('Download Speed             :', downloadSpeedInMbps, 'Mbps');
+
+  return { speedKbps: downloadSpeedInKbps, speedMbps: downloadSpeedInMbps };
 }
 
 try {
   // await downloadFile()
-  await measureDownloadSpeed()
+  const iterationONE = await measureDownloadSpeed()
+  const iterationTWO = await measureDownloadSpeed()
+  const iterationTHREE = await measureDownloadSpeed()
+
+  const calculationONE = calculateDownloadSpeed(iterationONE)
+  const calculationTWO = calculateDownloadSpeed(iterationTWO)
+  const calculationTHREE = calculateDownloadSpeed(iterationTHREE)
+
+  const avgDownloadSpeedKbps = (calculationONE.speedKbps + calculationTWO.speedKbps + calculationTHREE.speedKbps) / 3;
+  const avgDownloadSpeedMbps = (calculationONE.speedMbps + calculationTWO.speedMbps + calculationTHREE.speedMbps) / 3;
+
+  console.log('Average Download Speed: ', avgDownloadSpeedKbps, 'Kbps', avgDownloadSpeedMbps, 'Mbps');
 } catch (e) {
   console.error('error', e)
 }
