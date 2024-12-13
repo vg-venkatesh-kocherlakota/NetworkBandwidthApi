@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
 using System.Net;
 
 [ApiController]
@@ -66,7 +64,7 @@ public class NetworkBandwidthController : ControllerBase
     }
 
     [HttpPost("upload")]
-    public async Task<IActionResult> ReceiveUploadedChunk([FromForm] IFormFile fileChunk)
+    public IActionResult ReceiveUploadedChunk([FromForm] IFormFile fileChunk)
     {
         if (fileChunk == null || fileChunk?.Length == 0)
         {
@@ -74,7 +72,7 @@ public class NetworkBandwidthController : ControllerBase
         }
         using (var memoryStream = new MemoryStream())
         {
-            fileChunk.CopyTo(memoryStream);
+            fileChunk!.CopyTo(memoryStream);
         }
         Response.StatusCode = (int)HttpStatusCode.OK;
 
