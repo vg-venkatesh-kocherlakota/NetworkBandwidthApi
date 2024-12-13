@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -64,18 +65,22 @@ public class NetworkBandwidthController : ControllerBase
     }
 
     [HttpPost("upload")]
-    public IActionResult ReceiveUploadedChunk([FromForm] IFormFile fileChunk)
+    public IActionResult ReceiveUploadedChunk([FromForm] FileUploadModel model)
     {
-        if (fileChunk == null || fileChunk?.Length == 0)
+        if (model.File == null || model.File.Length == 0)
         {
-            return new EmptyResult();
+            return BadRequest("No file uploaded.");
         }
         using (var memoryStream = new MemoryStream())
         {
-            fileChunk!.CopyTo(memoryStream);
+            model.File!.CopyTo(memoryStream);
         }
         Response.StatusCode = (int)HttpStatusCode.OK;
 
-        return new EmptyResult();
+        return Ok();
+    }
+
+    public class FileUploadModel {
+        public IFormFile File { get; set; }
     }
 }

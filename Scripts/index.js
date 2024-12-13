@@ -1,11 +1,11 @@
 import axios from 'axios';
-import { createWriteStream, unlinkSync, createReadStream, statSync } from 'fs';
+import { createWriteStream, unlinkSync, statSync, createReadStream } from 'fs';
 import FormData from 'form-data';
 
-const DOWNLOAD_ENDPOINT = 'http://localhost:5000/network/download'; // Replace with your server URL
-const UPLOAD_ENDPOINT = 'http://localhost:5000/network/upload'; // Replace with your server URL
+const DOWNLOAD_ENDPOINT = 'https://localhost:5001/network/download'; // Replace with your server URL
+const UPLOAD_ENDPOINT = 'https://localhost:5001/network/upload'; // Replace with your server URL
 const TEMP_FILEPATH = 'test-output.log';
-const LOCAL_25MB_FILEPATH = './File-25MN.val';
+const LOCAL_25MB_FILEPATH = 'File-25MB.val';// import.meta.dirname + '/File-25MB.val';
 const CHUNK_SIZE_BYTES = 10 * 1024; // 10KB
 const ONE_SECOND = 1000;
 
@@ -66,48 +66,42 @@ function: measureDownloadSpeed()
 Check how many chunks got uploaded in 1 sec and calculate the upload speed
 If we didn't fully receive a single chunk in a second, network speed is less than 80Kbps
 */
-async function measureUploadSpeed () {
+async function measureUploadSpeed() {
   let sizeUploadedTillNow = 0;
   let numberOfUploadedChunks = 0;
-  const totalServerFileSize = statSync(LOCAL_25MB_FILEPATH).size;
+  const totalServerFileSize = statSync(LOCAL_25MB_FILEPATH, { autoClose: true }).size;
 
-  try {
-    const startTimestamp = Date.now();
-    let timeElapsedInMilliseconds = 0;
+  const startTimestamp = Date.now();
+  let timeElapsedInMilliseconds = 0, sizeDownloadedTillNow = 0;
 
-    while (sizeUploadedTillNow < totalServerFileSize) {
-      timeElapsedInMilliseconds = Date.now() - startTimestamp;
-      if (timeElapsedInMilliseconds >= ONE_SECOND) {
-        console.log('🐞 ~ file: index.js:67 ~ measureDownloadSpeed ~ timeElapsedInMilliseconds:', timeElapsedInMilliseconds)
-        break;
-      }
-      
-      const form = new FormData();
-      const start = sizeUploadedTillNow;
-      const end = Math.min(start + CHUNK_SIZE_BYTES - 1, totalServerFileSize - 1);
-      const uploadFileReadStream = createReadStream(TEMP_FILEPATH, { start: start, end: end});
-
-      form.append('file', uploadFileReadStream.read(CHUNK_SIZE_BYTES));
-
-      await axios.post(UPLOAD_ENDPOINT, form, {
-        headers: {
-          ...form.getHeaders()
-        }
-      });
-
-      sizeUploadedTillNow += CHUNK_SIZE_BYTES;
-      numberOfUploadedChunks++;
+  while (sizeUploadedTillNow < totalServerFileSize) {
+    timeElapsedInMilliseconds = Date.now() - startTimestamp;
+    if (timeElapsedInMilliseconds >= ONE_SECOND) {
+      console.log('🐞 ~ file: index.js:82 ~ measureUploadSpeed ~ timeElapsedInMilliseconds:', timeElapsedInMilliseconds)
+      break;
     }
-  } catch (e) {
-    console.error('Error while downloading chunks:', e)
+
+    let data = new FormData();
+    const start = sizeDownloadedTillNow;
+    const end = Math.min(start + CHUNK_SIZE_BYTES - 1, totalServerFileSize - 1);
+    data.append('File', createReadStream(LOCAL_25MB_FILEPATH, { autoClose: true, highWaterMark: CHUNK_SIZE_BYTES, start, end }));
+
+    await axios.post(
+      UPLOAD_ENDPOINT,
+      data,
+      {
+        ...data.getHeaders()
+      }
+    )
+
+    sizeDownloadedTillNow += CHUNK_SIZE_BYTES;
+    numberOfUploadedChunks++;
   }
 
-  tempFileWriteStream.end();
-  unlinkSync(TEMP_FILEPATH);
-  return { chunksCount: numberOfDownloadedChunks, chunkSizeInBytes: CHUNK_SIZE_BYTES, timeInMS: ONE_SECOND };
+  return { chunksCount: numberOfUploadedChunks, chunkSizeInBytes: CHUNK_SIZE_BYTES, timeInMS: ONE_SECOND };
 }
 
-async function getServerFileSize () {
+async function getServerFileSize() {
   // No need to make this call if file size is fixed and won't change across releases
   const { headers } = await axios.head(DOWNLOAD_ENDPOINT);
   return parseInt(headers['content-length'], 10);
@@ -148,29 +142,20 @@ function calculateUploadSpeed(data) {
 }
 
 try {
-  const diterationONE = await measureDownloadSpeed()
-  const diterationTWO = await measureDownloadSpeed()
-  const diterationTHREE = await measureDownloadSpeed()
+  await testDownload();
+  await testUpload();
+} catch (e) {
+  console.error('error', e)
+}
 
-  const dcalculationONE = calculateDownloadSpeed(diterationONE)
-  const dcalculationTWO = calculateDownloadSpeed(diterationTWO)
-  const dcalculationTHREE = calculateDownloadSpeed(diterationTHREE)
+async function testUpload(dontCalculate = false) {
+  const uiterationONE = await measureUploadSpeed();
+  const uiterationTWO = await measureUploadSpeed();
+  const uiterationTHREE = await measureUploadSpeed();
 
-  const davgDownloadSpeedKbps = (dcalculationONE.speedKbps + dcalculationTWO.speedKbps + dcalculationTHREE.speedKbps) / 3;
-  const davgDownloadSpeedMbps = (dcalculationONE.speedMbps + dcalculationTWO.speedMbps + dcalculationTHREE.speedMbps) / 3;
-
-  console.log('Average Download Speed       : ', davgDownloadSpeedKbps.toFixed(2), 'Kbps');
-  console.log('Average Download Speed       : ', davgDownloadSpeedMbps.toFixed(2), 'Mbps');
-  console.log();
-  console.log("Note: Includes latency in the network.");
-
-  const uiterationONE = await measureUploadSpeed()
-  const uiterationTWO = await measureUploadSpeed()
-  const uiterationTHREE = await measureUploadSpeed()
-
-  const ucalculationONE = calculateDownloadSpeed(uiterationONE)
-  const ucalculationTWO = calculateDownloadSpeed(uiterationTWO)
-  const ucalculationTHREE = calculateDownloadSpeed(uiterationTHREE)
+  const ucalculationONE = calculateDownloadSpeed(uiterationONE);
+  const ucalculationTWO = calculateDownloadSpeed(uiterationTWO);
+  const ucalculationTHREE = calculateDownloadSpeed(uiterationTHREE);
 
   const uavgDownloadSpeedKbps = (ucalculationONE.speedKbps + ucalculationTWO.speedKbps + ucalculationTHREE.speedKbps) / 3;
   const uavgDownloadSpeedMbps = (ucalculationONE.speedMbps + ucalculationTWO.speedMbps + ucalculationTHREE.speedMbps) / 3;
@@ -179,7 +164,22 @@ try {
   console.log('Average Upload Speed       : ', uavgDownloadSpeedMbps.toFixed(2), 'Mbps');
   console.log();
   console.log("Note: Includes latency in the network.");
+}
 
-} catch (e) {
-  console.error('error', e)
+async function testDownload() {
+  const diterationONE = await measureDownloadSpeed();
+  const diterationTWO = await measureDownloadSpeed();
+  const diterationTHREE = await measureDownloadSpeed();
+
+  const dcalculationONE = calculateDownloadSpeed(diterationONE);
+  const dcalculationTWO = calculateDownloadSpeed(diterationTWO);
+  const dcalculationTHREE = calculateDownloadSpeed(diterationTHREE);
+
+  const davgDownloadSpeedKbps = (dcalculationONE.speedKbps + dcalculationTWO.speedKbps + dcalculationTHREE.speedKbps) / 3;
+  const davgDownloadSpeedMbps = (dcalculationONE.speedMbps + dcalculationTWO.speedMbps + dcalculationTHREE.speedMbps) / 3;
+
+  console.log('Average Download Speed       : ', davgDownloadSpeedKbps.toFixed(2), 'Kbps');
+  console.log('Average Download Speed       : ', davgDownloadSpeedMbps.toFixed(2), 'Mbps');
+  console.log();
+  console.log("Note: Includes latency in the network.");
 }
